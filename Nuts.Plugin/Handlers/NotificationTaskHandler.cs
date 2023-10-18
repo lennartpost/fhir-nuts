@@ -1,11 +1,12 @@
 ﻿using Hl7.Fhir.ElementModel;
-using Microsoft.Extensions.Logging;
-using Microsoft.Net.Http.Headers;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Rest;
+using LinqKit;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using Vonk.Core.Context;
 using Task = System.Threading.Tasks.Task;
-using Microsoft.Extensions.Options;
 
 namespace Nuts.Plugin.Handlers
 {
@@ -15,8 +16,8 @@ namespace Nuts.Plugin.Handlers
         private readonly NutsClient _nutsClient;
         private readonly IOptions<NutsOptions> _nutsOptions;
 
-        public NotificationTaskHandler(ILogger<NotificationTaskHandler> logger, 
-            NutsClient nutsClient, 
+        public NotificationTaskHandler(ILogger<NotificationTaskHandler> logger,
+            NutsClient nutsClient,
             IOptions<NutsOptions> nutsOptions)
         {
             _logger = logger;
@@ -27,6 +28,10 @@ namespace Nuts.Plugin.Handlers
         public async Task HandleAsync(IVonkContext vonkContext)
         {
             _logger.LogInformation("Notification task received");
+            vonkContext.HttpContext().Request.Headers[HeaderNames.Authorization].ForEach(authHeader =>
+            {
+                _logger.LogInformation("Authorization header: {authHeader}", authHeader);
+            });
 
             try
             {
@@ -113,14 +118,14 @@ namespace Nuts.Plugin.Handlers
                 // obtain access token
                 string accessToken = "";
                 _logger.LogWarning("TODO: Implemented retrieval of access token."); // TODO
-                //string? accessToken = await _nutsClient.GetAccessToken(senderDid, receiverDid, vc);
-                //if (string.IsNullOrEmpty(accessToken))
-                //{
-                //    throw new Exception("Unable to obtain an access token");
-                //}
-                //_logger.LogInformation($"Access token obtained: {accessToken}");
+                                                                                    //string? accessToken = await _nutsClient.GetAccessToken(senderDid, receiverDid, vc);
+                                                                                    //if (string.IsNullOrEmpty(accessToken))
+                                                                                    //{
+                                                                                    //    throw new Exception("Unable to obtain an access token");
+                                                                                    //}
+                                                                                    //_logger.LogInformation($"Access token obtained: {accessToken}");
 
-                
+
                 // create a FHIR client for interacting with the FHIR server of the sender
                 var fhirClient = new FhirClient(fhirEndpoint);
                 fhirClient.RequestHeaders.Add("Authorization", "Bearer " + accessToken);
@@ -133,7 +138,7 @@ namespace Nuts.Plugin.Handlers
                 }
 
                 _logger.LogInformation($"Retrieved workflow task with id: {workflowTask.Id}");
-                
+
                 var transactionBundle = new Bundle { Type = Bundle.BundleType.Transaction };
 
                 // retrieve other resources
@@ -174,7 +179,7 @@ namespace Nuts.Plugin.Handlers
                 }
 
                 // get the fhir endpoint of the receiver (us, this works because we are also a sender)
-                string? receiverFhirEndpoint = await _nutsClient.GetEndpointAsync(receiverDid, "bgz-sender", "fhir"); 
+                string? receiverFhirEndpoint = await _nutsClient.GetEndpointAsync(receiverDid, "bgz-sender", "fhir");
                 if (receiverFhirEndpoint == null)
                 {
                     throw new Exception("Unable to retrieve FHIR endpoint of receiver");
@@ -184,7 +189,7 @@ namespace Nuts.Plugin.Handlers
 
                 var selfFhirClient = new FhirClient(receiverFhirEndpoint);
                 await selfFhirClient.TransactionAsync(transactionBundle);
-                
+
                 _logger.LogInformation($"Successfully stored resources in Firely Server.");
             }
             catch (Exception ex)
@@ -197,7 +202,7 @@ namespace Nuts.Plugin.Handlers
         {
             List<Resource> resources = new List<Resource>();
 
-            char[] delimiterChars = {'?', '&'};
+            char[] delimiterChars = { '?', '&' };
             string[] arguments = search.Split(delimiterChars);
 
             if (arguments.Length == 0)

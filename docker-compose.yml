@@ -1,5 +1,18 @@
 version: "3.9"
 services:
+  nginx:
+    image: nginx:1.25
+    container_name: nginx
+    ports:
+      - 443:443
+    networks:
+      - fhir-nuts
+    volumes:
+      - "./containers/nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
+      - "./containers/nginx/nginx-development.pem:/etc/nginx/ssl/server.pem:ro"
+      - "./containers/nginx/nginx-development.key:/etc/nginx/ssl/key.pem:ro"
+      - "./containers/one/config/node/truststore-development.pem:/etc/nginx/ssl/truststore.pem:ro"
+
   node-one:
     image: nutsfoundation/nuts-node:latest
     container_name: node-one
@@ -9,10 +22,13 @@ services:
       NUTS_CONFIGFILE: /opt/nuts/nuts.yaml
     ports:
       - 1323:1323
-      - 5555:5555
     volumes:
-      - "./one/config/node/nuts.yaml:/opt/nuts/nuts.yaml"
-      - "./one/data/node:/opt/nuts/data"
+      - "./containers/one/config/node/node-one-development.pem:/opt/nuts/node-one-development.pem:ro"
+      - "./containers/one/config/node/node-one-development.key:/opt/nuts/node-one-development.key:ro"
+      - "./containers/one/config/node/truststore-development.pem:/opt/nuts/truststore-development.pem:ro"
+      - "./containers/one/config/node/nuts.yaml:/opt/nuts/nuts.yaml"
+      - "./containers/one/data/node:/opt/nuts/data"
+  
   node-two:
     image: nutsfoundation/nuts-node:latest
     container_name: node-two
@@ -22,34 +38,39 @@ services:
       NUTS_CONFIGFILE: /opt/nuts/nuts.yaml
     ports:
       - 2323:1323
-      - 2555:5555
     volumes:
-      - "./two/config/node/nuts.yaml:/opt/nuts/nuts.yaml"
-      - "./two/data/node:/opt/nuts/data"
+      - "./containers/two/config/node/node-two-development.pem:/opt/nuts/node-two-development.pem:ro"
+      - "./containers/two/config/node/node-two-development.key:/opt/nuts/node-two-development.key:ro"
+      - "./containers/two/config/node/truststore-development.pem:/opt/nuts/truststore-development.pem:ro"
+      - "./containers/two/config/node/nuts.yaml:/opt/nuts/nuts.yaml"
+      - "./containers/two/data/node:/opt/nuts/data"
+  
   fhir-one:
     image: firely/server:5.0.0
     container_name: fhir-one
     ports:
       - "4080:4080"
     volumes:
-      - ./one/config/fhir/appsettings.instance.json:/app/appsettings.instance.json
-      - ./one/config/fhir/logsettings.instance.json:/app/logsettings.instance.json
+      - ./containers/one/config/fhir/appsettings.instance.json:/app/appsettings.instance.json
+      - ./containers/one/config/fhir/logsettings.instance.json:/app/logsettings.instance.json
       - ./shared/config/fhir/firelyserver-license.json:/app/firelyserver-license.json      
       - ./shared/config/fhir/plugins/:/app/plugins/
     networks:
-      - "fhir-nuts"
+      - fhir-nuts
+  
   fhir-two:
     image: firely/server:5.0.0
     container_name: fhir-two
     ports:
       - "4081:4080"
     volumes:
-      - ./two/config/fhir/appsettings.instance.json:/app/appsettings.instance.json
-      - ./two/config/fhir/logsettings.instance.json:/app/logsettings.instance.json
+      - ./containers/two/config/fhir/appsettings.instance.json:/app/appsettings.instance.json
+      - ./containers/two/config/fhir/logsettings.instance.json:/app/logsettings.instance.json
       - ./shared/config/fhir/firelyserver-license.json:/app/firelyserver-license.json      
       - ./shared/config/fhir/plugins/:/app/plugins/
     networks:
-      - "fhir-nuts"
+      - fhir-nuts
+  
   seq:
     image: datalust/seq
     container_name: seq
@@ -65,5 +86,6 @@ services:
       resources:
         limits:
           memory: 512M
+
 networks:
   fhir-nuts:

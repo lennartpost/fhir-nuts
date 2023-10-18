@@ -3,8 +3,8 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
-/one/data
-/two/data
+#/containers/one/data
+#/containers/two/data
 /shared/config/fhir/firelyserver-license.json
 /resources
 /resources_old

@@ -1,0 +1,24 @@
+datadir: /opt/nuts/data
+strictmode: false
+http:
+  default:
+    address: :1323
+    cors:
+      origin: "*"
+tls:
+  # truststorefile: /opt/nuts/truststore-development.pem
+  # certfile: /opt/nuts/node-two-development.pem
+  # certkeyfile: /opt/nuts/node-two-development.key
+  offload: incoming
+  certheader: X-SSL-CERT
+verbosity: debug
+network:
+  #nodedid: 
+  certfile: /opt/nuts/node-two-development.pem
+  certkeyfile: /opt/nuts/node-two-development.key
+  truststorefile: /opt/nuts/truststore-development.pem
+  bootstrapnodes: nginx:5555
+  publicaddr: node-two:5555
+  grpcaddr: :5555
+  v2:
+    gossipinterval: 500

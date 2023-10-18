@@ -16,7 +16,7 @@ namespace Nuts.Plugin
             IOptions<NutsOptions> nutsOptions)
         {
             _logger = logger;
-            _httpClient.BaseAddress = new Uri(nutsOptions.Value.NodeUrl); 
+            _httpClient.BaseAddress = new Uri(nutsOptions.Value.NodeUrl);
         }
 
         /// <summary>
@@ -27,7 +27,7 @@ namespace Nuts.Plugin
         /// <param name="taskId"></param>
         /// <returns></returns>
         /// <see href="https://nuts-foundation.gitbook.io/drafts/rfc/rfc014-authorization-credential"/>
-        public async Task<string> CreateAuthorizationCredentialsAsync(string sender, string receiver, int taskId)
+        public async Task<string?> CreateAuthorizationCredentialsAsync(string sender, string receiver, int taskId)
         {
             var searchJson = string.Format(ReferTemplates.CREATE_VC_TEMPLATE, sender, receiver, taskId);
 
@@ -40,8 +40,25 @@ namespace Nuts.Plugin
 
             string content = await response.Content.ReadAsStringAsync();
             var jsonContent = JsonNode.Parse(content);
-            JsonNode? id = jsonContent["id"];
-            return id.ToString();
+            JsonNode? id = jsonContent?["id"];
+            return id?.ToString();
+        }
+
+        public async Task<string?> CreateAuthorizationCredentialsCredentialSubjectAsync(string sender, string receiver, int taskId)
+        {
+            var searchJson = string.Format(ReferTemplates.CREATE_VC_TEMPLATE, sender, receiver, taskId);
+
+            using HttpContent body = new StringContent(searchJson, Encoding.UTF8, MediaTypeNames.Application.Json);
+
+            using HttpResponseMessage response =
+                await _httpClient.PostAsync("/internal/vcr/v2/issuer/vc", body);
+
+            response.EnsureSuccessStatusCode();
+
+            string content = await response.Content.ReadAsStringAsync();
+            var jsonContent = JsonNode.Parse(content);
+            JsonNode? credentialSubject = jsonContent?["credentialSubject"];
+            return credentialSubject?.ToString();
         }
 
         public async Task<string?> GetDidByOrganizationNameAsync(string name)
@@ -60,7 +77,7 @@ namespace Nuts.Plugin
             var jsonContent = JsonNode.Parse(content);
             JsonNode? vcsNode = jsonContent["verifiableCredentials"];
 
-            var vcsArray = vcsNode.AsArray();
+            var vcsArray = vcsNode?.AsArray();
             foreach (var vc in vcsArray)
             {
                 JsonNode? vcNode = vc["verifiableCredential"];
@@ -68,7 +85,7 @@ namespace Nuts.Plugin
                 JsonNode? idNode = subjectNode["id"];
 
                 // for simplicity sake we take the first match
-                return idNode.ToString();
+                return idNode?.ToString();
             }
 
             return null;
@@ -131,8 +148,8 @@ namespace Nuts.Plugin
             }
             catch (Exception e)
             {
-               _logger.LogCritical($"Unable to obtain an access token. Node: {_httpClient.BaseAddress}. Body: {searchJson}. Exception: {e.Message}.");
-               throw;
+                _logger.LogCritical($"Unable to obtain an access token. Node: {_httpClient.BaseAddress}. Body: {searchJson}. Exception: {e.Message}.");
+                throw;
             }
         }
 
@@ -157,9 +174,24 @@ namespace Nuts.Plugin
             string content = await response.Content.ReadAsStringAsync();
 
             var jsonContent = JsonNode.Parse(content);
-            JsonNode? node = jsonContent["access_token"];
+            JsonNode? node = jsonContent?["access_token"];
 
             return node?.ToString();
+        }
+
+        public async Task<string?> IntrospectAccessTokenAsync(string accessToken)
+        {
+            using HttpContent body = new FormUrlEncodedContent(new Dictionary<string, string>() { { "token", accessToken } });
+
+            using HttpResponseMessage response =
+                await _httpClient.PostAsync("/internal/auth/v1/accesstoken/introspect", body);
+
+            response.EnsureSuccessStatusCode();
+
+            string content = await response.Content.ReadAsStringAsync();
+
+            var jsonContent = JsonNode.Parse(content);
+            return jsonContent?.ToString();
         }
 
         /// <summary>
